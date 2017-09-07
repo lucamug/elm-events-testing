@@ -1,12 +1,13 @@
 module Main exposing (..)
 
-import Html exposing (Html, div, text, program, pre)
-import Html.Attributes exposing (style)
+import Html exposing (..)
+import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Mouse
 import Keyboard
 import Regex
 import Char
+import Keyboard.Extra exposing (Key(..))
 
 
 -- MODEL
@@ -29,6 +30,7 @@ type alias Model =
     , eventMouseLeave : Int
     , eventMouseOver : Int
     , eventMouseOut : Int
+    , pressedKeys : List Key
     }
 
 
@@ -50,6 +52,7 @@ init =
       , eventMouseLeave = 0
       , eventMouseOver = 0
       , eventMouseOut = 0
+      , pressedKeys = []
       }
     , Cmd.none
     )
@@ -75,6 +78,7 @@ type Msg
     | EventMouseLeave
     | EventMouseOver
     | EventMouseOut
+    | KeyboardMsg Keyboard.Extra.Msg
 
 
 
@@ -84,12 +88,22 @@ type Msg
 view : Model -> Html Msg
 view model =
     let
+        shiftPressed =
+            List.member Shift model.pressedKeys
+
+        arrows =
+            Keyboard.Extra.arrows model.pressedKeys
+
+        wasd =
+            Keyboard.Extra.wasd model.pressedKeys
+
         formatted =
             model
                 |> toString
                 |> Regex.replace Regex.All (Regex.regex ", m") (\_ -> "\n, m")
                 |> Regex.replace Regex.All (Regex.regex ", k") (\_ -> "\n, k")
                 |> Regex.replace Regex.All (Regex.regex ", e") (\_ -> "\n, e")
+                |> Regex.replace Regex.All (Regex.regex ", p") (\_ -> "\n, p")
                 |> Regex.replace Regex.All (Regex.regex "}$") (\_ -> "\n}")
     in
         pre
@@ -111,6 +125,11 @@ view model =
                 ]
             ]
             [ text formatted
+            , pre [] [ text ("shiftPressed: " ++ toString shiftPressed) ]
+            , pre [] [ text ("arrows: " ++ toString arrows) ]
+            , pre [] [ text ("wasd: " ++ toString wasd) ]
+            , div [] [ a [ href "https://medium.com/@l.mugnaini/elm-events-testing-a812dfbcb21" ] [ text "Post: https://medium.com/@l.mugnaini/elm-events-testing-a812dfbcb21" ] ]
+            , div [] [ a [ href "https://github.com/lucamug/elm-events-testing/blob/master/main.elm" ] [ text "Code: https://github.com/lucamug/elm-events-testing/blob/master/main.elm" ] ]
             , div
                 [ style
                     [ ( "position", "absolute" )
@@ -177,6 +196,13 @@ update msg model =
         EventMouseOut ->
             ( { model | eventMouseOut = model.eventMouseOut + 1 }, Cmd.none )
 
+        KeyboardMsg keyMsg ->
+            ( { model
+                | pressedKeys = Keyboard.Extra.update keyMsg model.pressedKeys
+              }
+            , Cmd.none
+            )
+
 
 
 -- SUBSCRIPTIONS
@@ -192,6 +218,7 @@ subscriptions model =
         , Keyboard.presses KeyboardPresses
         , Keyboard.downs KeyboardDowns
         , Keyboard.ups KeyboardUps
+        , Sub.map KeyboardMsg Keyboard.Extra.subscriptions
         ]
 
 
